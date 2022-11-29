@@ -1,0 +1,102 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const app = express();
+//allows information to be sent through the body 
+app.use(bodyParser.json());
+
+//patient info records
+let patients = new Object();
+patients["102112321"] = ["Harry", "Jones", "917-404-200"];
+patients["888907777"] = ["Jennifer", "Smith", "302-232-7372"];
+
+//patient medical records
+let records = new Object();
+records["102112321"] = "Status: Healthy";
+records["888907777"] = "Status: Mild Fever"
+
+
+//Get patient medical records
+//API receives request, matches it and runs whatever code inside designated field 
+//res.status will return the status of the server
+app.get("/records", (req, res) =>{
+    
+    //verfies patient exists, authentication
+    //console.log(req.body);
+    //corresponds to one of the records depending on the ssn that was sent from the header. If a ssn that was sent and doesnt exist, "undefined" will be logged to the console 
+    if (records[req.headers.ssn] === undefined){
+        res.status(404).send({"msg":"Patient not found."})
+        return;
+    }
+
+    //verifies SSN matches first and last name 
+    if (req.headers.firstname == patients[req.headers.ssn][0] && req.headers.lastname == patients[req.headers.ssn][1]){
+        if (req.body.reasonforvisit === "medicalrecords"){
+            //return medical records
+            res.status(200).send(records[req.headers.ssn]);
+            return;
+        }
+        else {
+            //return error
+            res.status(501).send({"msg":"Unable to complete request at this time " + req.body.reasonforvisit})
+            return;
+        }
+    }
+    else {
+        res.status(401).send({"msg":"First or Last didn't match SSN"});
+        return;
+    }
+    //Return appropiate record 
+    res.status(200).send({"msg": "HTTP GET - SUCCESS!"})
+
+});
+// Create a new patient
+app.post("/", (req, res) =>{
+    //Creates patient in database
+    patients[req.headers.ssn] = [req.headers.firstname, req.headers.lastname, req.headers.phone]
+    res.status(200).send(patients);
+});
+
+//Update exisiting patient phone number
+app.put("/", (req, res) =>{
+    if (records[req.headers.ssn] === undefined){
+        res.status(404).send({"msg":"Patient not found."})
+        return;
+    }
+    if (req.headers.firstname == patients[req.headers.ssn][0] && req.headers.lastname == patients[req.headers.ssn][1]){
+        //If first and last match update phone # and return patient info
+        patients[req.headers.ssn] = [req.headers.firstname, req.headers.lastname, req.body.phone];
+        res.status(200).send(patients[req.headers.ssn]);
+        return;
+    }
+    else {
+        res.status(401).send({"msg":"First or Last didn't match SSN"});
+        return;
+    }
+    //
+    res.status(200).send({"msg": "HTTP PUT - SUCCESS!"})
+});
+
+//Delete patient records
+app.delete("/", (req, res) =>{
+    if (records[req.headers.ssn] === undefined){
+        res.status(404).send({"msg":"Patient not found."})
+        return;
+    }
+
+    //verifies SSN matches first and last name 
+    if (req.headers.firstname == patients[req.headers.ssn][0] && req.headers.lastname == patients[req.headers.ssn][1]){
+        //Delete patient and medical records from database
+        delete patients[req.headers.ssn];
+        delete patients[req.headers.ssn];
+        res.status(200).send({"msg": "Succesfully deleted"});
+        return;
+    }
+    else {
+        res.status(401).send({"msg":"First or Last didn't match SSN Trying to delete"});
+        return;
+    }
+    
+});
+
+
+app.listen(3000);
